@@ -85,26 +85,28 @@ def main():
         messages = [
             types.Content(role="user", parts=[types.Part(text=prompt)]),
         ]
+        for i in range(21):
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-001',
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    tools=[avaliable_functions],
+                    system_instruction=system_prompt
+                ),
+            )
+            if response.candidates:
+                for candidate in response.candidates:
+                    messages.append(candidate.content)
 
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model='gemini-2.0-flash-001',
-            contents=messages,
-            config=types.GenerateContentConfig(
-                tools=[avaliable_functions],
-                system_instruction=system_prompt
-            ),
-        )
+            if response.function_calls:
+                function_call_part = response.function_calls[0]
+                function_result = call_function(function_call_part, verbose=verbose)
 
-        if response.function_calls:
-            function_call_part = response.function_calls[0]
-            function_result = call_function(function_call_part, verbose=verbose)
-            if function_result.parts and function_result.parts[0].function_response.response:
-                print(f"-> {function_result.parts[0].function_response.response}")
+                messages.append(function_result)
             else:
-                raise RuntimeError("Function call did not return a valid response.")
-        else:
-            print("No function calls were made in the response.")
+                print(f"\nFinal response:\n{response.text}")
+                break
 
 
 
